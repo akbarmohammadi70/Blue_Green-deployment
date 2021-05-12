@@ -1,0 +1,104 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Shecan for resolve
+      shell: echo "nameserver 178.22.122.100" > /etc/resolv.conf
+
+- hosts: docker
+  become: true
+  tasks:
+    - name: Install aptitude using apt
+      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+    - name: Install required system packages
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: ['apt-transport-https', 'python-pip' , 'firewalld' , 'ca-certificates', 'curl' , 'software-properties-common', 'python3', 'gnupg', 'lsb-release', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+    - name: Install docker-py 
+      shell: pip install docker-py
+
+    - name: enabled firewall
+      service: name=firewalld state=started enabled=yes    
+   
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg 
+        state: present
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+    
+  
+   
+
+    - name: Install required system packages
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: ['docker-ce' , 'docker-ce-cli' , 'containerd.io']
+    
+    - name: Install Docker Module for Python
+      pip:
+        name: docker 
+
+    - name: enabled docker-ce
+      service: name=docker  state=started enabled=yes
+    - name: enabled containerd.io
+      service: name=containerd  state=started enabled=yes
+      
+    - name: Docker node 7946/tcp , 7946/udp , 4789/udp
+      shell: firewall-cmd --add-port=7946/tcp --permanent && firewall-cmd --add-port=7946/udp --permanent && firewall-cmd --add-port=4789/udp --permanent
+     
+    - name: Reload firewalld services
+      service:
+        name: firewalld
+        state: restarted
+   
+
+- name: master node firewalld roles
+  hosts: master
+  become: true
+  tasks:
+    
+    - name: Docker master node 2377/tcp
+      shell: firewall-cmd --add-port=2377/tcp --permanent
+
+    - name: Reload firewalld services
+      service:
+        name: firewalld
+        state: restarted
+
+    - name: Swarm init
+      shell: docker swarm init
+      ignore_errors: yes
+        # - name: Add nodes
+        #docker_swarm:
+        #state: join
+        #advertise_addr: "192.168.43.118"
+        #join_token: rezult.swarm_facts.JoinTokens.Worker
+        #remote_addrs: "192.168.43.118:2377"
+        # when:  "ansible_default_ipv4.address != 192.168.43.118"
+
+- name: nginx loadbalancer install
+  hosts: nginx
+  become: true
+  tasks:
+    - name: install firewalld nad nginx
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: ['firewalld' , 'nginx']
+    - name: enable firewalld
+      service: name=firewalld  state=started enabled=yes
+    - name: add port 443
+      shell: firewall-cmd --add-port=443/tcp --permanent && firewall-cmd --reload
+    - name: enabled nginx
+      service: name=nginx  state=started enabled=yes
+    
+    - name: Copy nginx.conf
+      copy:
+        src: ./nginx.conf
+        dest: /etc/nginx/nginx.conf
+        owner: root
+        group: root
+    - name: restart nginx
+      service: name=nginx state=restarted  
+    

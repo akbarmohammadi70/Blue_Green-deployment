@@ -1,0 +1,32 @@
+---
+- hosts: master
+  become: yes
+  tasks:
+    - name: create build directory
+      file:
+        path: /root/demo-dockerfile
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: copy Dockerfile
+      copy:
+        src: ./Dockerfile 
+        dest: /root/demo-dockerfile/Dockerfile
+        src: ./main.go
+        dest: /root/demo-dockerfile/main.go
+        src: ./go.mod
+        dest: /root/demo-dockerfile/go.mod
+        src: ./go.sum
+        dest: /root/demo-dockerfile/go.sum
+        owner: root
+        group: root
+        mode: '0644'
+    - name: build container image
+      shell: docker build -t '{{ v }}' . -f /root/demo-dockerfile/Dockerfile
+    - name: tag image
+      shell: docker tag '{{ v }}' '{{ push }}':'{{ v }}' 
+    - name: push image
+      shell: docker push '{{ push }}':'{{ v }}'
+    
+...

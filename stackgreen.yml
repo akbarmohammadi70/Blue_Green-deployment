@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  green:
+    image: golang:v2
+    networks: 
+      - web
+    ports:
+      - "3002:80"
+    deploy:
+      replicas: 1
+      update_config:
+        delay: 1s
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.hostname == worker2]
+
+networks:
+  web:
+    driver: overlay
+    

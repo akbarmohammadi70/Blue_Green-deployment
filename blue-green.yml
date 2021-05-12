@@ -1,0 +1,36 @@
+---
+- hosts: master
+  become: yes
+  tasks:
+    - name: create build directory
+      file:
+        path: /root/go
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: copy blue
+      copy:
+        src: ./stackblue.yml
+        dest: /root/go/stackblue.yml
+        owner: root
+        group: root
+        mode: '0644'
+    - name: copy green
+      copy:
+        src: ./stackgreen.yml
+        dest: /root/go/stackgreen.yml  
+                
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Run blue
+      command: docker stack deploy -c /root/go/stackblue.yml blue 
+    - name: Run green
+      shell: docker stack deploy -c /root/go/stackgreen.yml green
+    
+
+
+    
+
+...
